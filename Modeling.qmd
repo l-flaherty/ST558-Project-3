@@ -1,0 +1,16 @@
+---
+title: "ST558 Project 3 Modeling"
+author: "Liam Flaherty"
+format: html
+editor: visual
+---
+
+# Introduction
+
+# Logistic Regression Models
+
+# Classification Tree
+
+# Random Forest
+
+# Final Model Selection

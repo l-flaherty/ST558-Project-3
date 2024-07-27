@@ -5,16 +5,18 @@ format: html
 editor: visual
 ---
 
-## EDA
+## Introduction
 
-We are given some data on diabetes from <https://www.kaggle.com/datasets/alexteboul/diabetes-health-indicators-dataset/>. We download the file locally and load it as a tibble into our R session.
+We are given some data on diabetes from <https://www.kaggle.com/datasets/alexteboul/diabetes-health-indicators-dataset/>. Ultimately, we would like to create a model that uses the variables in our dataset to predict the presence of diabetes in a subject. Before we move to prediction, we'd like to perform a preliminary examination of the variables in our data-- that is the purpose of this file-- to get a sense of their distribution, to see if there are any missing data or outliers, to check if certain data seems to be implausible/clearly an input error, etc.  To do so, we download the file locally and load it as a tibble into our R session.
 
 ```{r}
-library(tidyverse)
+suppressPackageStartupMessages(library(tidyverse))
 
 diabetes=read_csv("diabetes.csv", show_col_types = FALSE)
 diabetes
 ```
+
+## Data
 
 We would like to get a preliminary look at the data, which we can do with normal summary functions. 
 
@@ -23,4 +25,65 @@ str(diabetes, max.level=1, give.attr=FALSE)
 summary(diabetes)
 ```
 
-All of our data is numeric, and most of our data is binary. Most of this data is easily interpretable (e.g. in the `HighBP` predictor, 1 means the observation has high blood pressure, and 0 means that the observation doesn't have high bloop pressure). A few non-binary predictors deserve explanations. The `GenHlth` variable is the respondents personal rating of their health on a scale of 1 (excellent) to 5 (poor). The `MentHlth` and `PhyscHlth` predictors are the respondents personal recollection for how many of the last thirty days that their mental or physical health was not good. The `Age` variable is categorized into 13 different levels with ages 18-24 coded as 1, and ages 80 and up coded as 13. The `Education` variable is graded on a scale of 1-6, with 1 representing no school past kindergarten, and 6 representing completing 4 years of college. The `Income` variable is graded on a scale of 1-8 with 1 representing earning less than $10,000, and 8 representing earning more than $75,000.
+We see that there is no missing data, that all of our data is numeric, and that most of our data is binary. Most of this binary data is easily interpretable (e.g. in the `HighBP` predictor, 1 means the observation has high blood pressure, and 0 means that the observation doesn't have high bloop pressure). A few non-binary predictors deserve explanations. The `GenHlth` variable is the respondents personal rating of their health on a scale of 1 (excellent) to 5 (poor). The `MentHlth` and `PhyscHlth` predictors are the respondents personal recollection for how many of the last thirty days that their mental or physical health was not good. The `Age` variable is categorized into 13 different levels with ages 18-24 coded as 1, and ages 80 and up coded as 13. The `Education` variable is graded on a scale of 1-6, with 1 representing no school past kindergarten, and 6 representing completing 4 years of college. The `Income` variable is graded on a scale of 1-8 with 1 representing earning less than \$10,000, and 8 representing earning more than \$75,000.
+
+## Summarizations
+
+With the data in hand, we'd now like to get some visual summaries. A natural interest is the distribution of our predictors. We have 22 in total, and most are binary. We can look at the bar charts for each of these below.
+
+
+```{r}
+set.seed(558)                               #to make reproducible#
+binary=diabetes |> select(where(~all(. %in% c(0, 1))))
+
+countbinary=ncol(binary)
+mycolors=sample(colors(), countbinary)     #random colors#
+par(mfrow = c(3, countbinary/3),           #to fit all#
+    mar=c(2,2,1,1),
+    oma=c(0,0,2,0),
+    cex.axis=0.7,
+    cex.lab=0.8)            
+
+for (i in 1:countbinary) {
+  barplot(table(binary[,i]),
+          main=paste0(names(binary[,i])),
+          xlab="Value", ylab="Frequency", col=mycolors[i])
+}
+
+rm(i, mycolors, countbinary)
+```
+A point of interest is the relative large disparities between the levels in certain variables. Sex, smoking status, cholesterol levels, and blood pressure are all relatively balanced (e.g. there are similar levels of males and females in the data), but other variables, like strokes or heavy alcohol consumption, are lopsided. This is important for two reasons. One, the response variable we will be modeling is itself lopsided. We should have a classification rate better than the baseline prevalence (e.g. always guessing "no diabetes" will yield a correct classification rate over 85%) if if our model is to be useful. Further, we should have a relatively balanced miss-classification rate on both sides of our prediction (correctly classifying 100\% of "no diabetes", but only correctly classifying 50\% of "diabetes" is not really in the spirit of our predictions). This is the classic balance of Type I and II error rates. The other reason unbalanced variables are important is for the individual predictors. It is not hard to imagine scenarios where lopsided predictors have strong predictive ability, but only in one direction (e.g. if someone has a stroke, which is very rare in our dataset, that might be a terrific indicator that someone has diabetes, but if someone doesn't have a stroke, which is very common in our dataset, that might not give us much information for our prediction). In such a scenario, it may be worthwhile to keep the variable in our model.
+
+We can also examine the distribution of the remaining variables. We see that BMI, General Health, and Age are somewhat symmetric, while education and income have heavy left tails, and mental and physical health have heavy right tails. 
+
+```{r}
+set.seed(558) 
+nonbinary=diabetes|> select(setdiff(names(diabetes), names(binary)))
+
+countnonbinary=ncol(nonbinary)
+mycolors=sample(colors(), countnonbinary)
+par(mfrow=c(3,2))
+
+for (i in 1:countnonbinary) {
+  barplot(table(nonbinary[,i]),
+          main=paste0(names(nonbinary[,i])),
+          xlab="Value", ylab="Frequency", col=mycolors[i])
+}
+rm(i, mycolors, countnonbinary)
+```
+
+Now we'd like to test the correlation among the variables. In general, we don't want a model with tons of variables that mostly contribute similarly to the predictive ability of the model. For that reason, we often want variables that aren't highly correlated.
+
+```{r}
+library(corrplot)
+
+a=cor(diabetes)
+corrplot(a, method="color", 
+           type="lower", 
+           tl.col="black", 
+           tl.srt=45, 
+           diag=FALSE,
+           addCoef.col=NULL,
+           col=colorRampPalette(c("blue", "white", "red"))(50))
+rm(a)
+```
