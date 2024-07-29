@@ -87,3 +87,29 @@ corrplot(a, method="color",
            col=colorRampPalette(c("blue", "white", "red"))(50))
 rm(a)
 ```
+
+
+
+For future modeling, we may want to convert most of our categorical variables from numeric to factor. This is done below.
+
+```{r}
+df=diabetes |>        #Age is categorical too, but enough buckets to leave as numeric#
+  mutate(Diabetes_binary=factor(Diabetes_binary, levels=c(0,1), labels=c("No_Diabetes", "Diabetes")),
+         HighBP=factor(HighBP, levels=c(0,1), labels=c("Reg_BP", "High_BP")),
+         HighChol=factor(HighChol, levels=c(0,1), labels=c("Reg_Chol", "High_Chol")),
+         CholCheck=factor(CholCheck, levels=c(0,1), labels=c("No_Check", "Check")),
+         Smoker=factor(Smoker, levels=c(0,1), labels=c("Non_Smoker", "Smoker")),
+         Stroke=factor(Stroke, levels=c(0,1), labels=c("No_Stroke", "Stroke")),
+         HeartDiseaseorAttack=factor(HeartDiseaseorAttack, levels=c(0,1), labels=c("No_HeartAttack", "HeartAttack")),
+         PhysActivity=factor(PhysActivity, levels=c(0,1), labels=c("No_Activity", "Activity")),
+         Fruits=factor(Fruits, levels=c(0,1), labels=c("No_Fruits", "Fruits")),
+         Veggies=factor(Veggies, levels=c(0,1), labels=c("No_Veggies", "Veggies")),
+         HvyAlcoholConsump=factor(HvyAlcoholConsump, levels=c(0,1), labels=c("No_Alc", "Lots_Of_Alc")),
+         AnyHealthcare=factor(AnyHealthcare, levels=c(0,1), labels=c("No_HealthCare", "HealthCare")),
+         NoDocbcCost=factor(NoDocbcCost, levels=c(0,1), labels=c("Cost_Not_impactful", "No_Doc_BC_Cost")),
+         Diffwalk=factor(HighChol, levels=c(0,1), labels=c("Can_Walk", "Cant_Walk")),
+         Sex=factor(Sex, levels=c(0,1), labels=c("Female", "Male")),
+         GenHlth=factor(GenHlth, levels=1:5, labels=c("Excellent", "Very_Good", "Good", "Fair", "Poor")),
+         Education=factor(Education, levels=1:6, labels=c("None", "Elem", "Some_HS", "HS", "Some_College", "College")),
+         Income=factor(Income, levels=1:8, labels=c("None", "Poor", "LC", "LMC","MC","UMC","UC","Rich")))
+```

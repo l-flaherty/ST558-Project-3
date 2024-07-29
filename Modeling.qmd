@@ -7,7 +7,145 @@ editor: visual
 
 # Introduction
 
+We have been given data from <https://www.kaggle.com/datasets/alexteboul/diabetes-health-indicators-dataset/>. Our goal in this file is to create models that predict whether or not someone has diabetes based on a slew of potential predictors. We split the data into a training and test set below.
+
+```{r}
+suppressPackageStartupMessages(library(tidyverse))
+suppressPackageStartupMessages(library(caret))
+
+diabetes=read_csv("diabetes.csv", show_col_types = FALSE)
+df=diabetes |>        #Age is categorical too, but enough buckets to leave as numeric#
+  mutate(Diabetes_binary=factor(Diabetes_binary, levels=c(0,1), labels=c("No_Diabetes", "Diabetes")),
+         HighBP=factor(HighBP, levels=c(0,1), labels=c("Reg_BP", "High_BP")),
+         HighChol=factor(HighChol, levels=c(0,1), labels=c("Reg_Chol", "High_Chol")),
+         CholCheck=factor(CholCheck, levels=c(0,1), labels=c("No_Check", "Check")),
+         Smoker=factor(Smoker, levels=c(0,1), labels=c("Non_Smoker", "Smoker")),
+         Stroke=factor(Stroke, levels=c(0,1), labels=c("No_Stroke", "Stroke")),
+         HeartDiseaseorAttack=factor(HeartDiseaseorAttack, levels=c(0,1), labels=c("No_HeartAttack", "HeartAttack")),
+         PhysActivity=factor(PhysActivity, levels=c(0,1), labels=c("No_Activity", "Activity")),
+         Fruits=factor(Fruits, levels=c(0,1), labels=c("No_Fruits", "Fruits")),
+         Veggies=factor(Veggies, levels=c(0,1), labels=c("No_Veggies", "Veggies")),
+         HvyAlcoholConsump=factor(HvyAlcoholConsump, levels=c(0,1), labels=c("No_Alc", "Lots_Of_Alc")),
+         AnyHealthcare=factor(AnyHealthcare, levels=c(0,1), labels=c("No_HealthCare", "HealthCare")),
+         NoDocbcCost=factor(NoDocbcCost, levels=c(0,1), labels=c("Cost_Not_impactful", "No_Doc_BC_Cost")),
+         Diffwalk=factor(HighChol, levels=c(0,1), labels=c("Can_Walk", "Cant_Walk")),
+         Sex=factor(Sex, levels=c(0,1), labels=c("Female", "Male")),
+         GenHlth=factor(GenHlth, levels=1:5, labels=c("Excellent", "Very_Good", "Good", "Fair", "Poor")),
+         Education=factor(Education, levels=1:6, labels=c("None", "Elem", "Some_HS", "HS", "Some_College", "College")),
+         Income=factor(Income, levels=1:8, labels=c("None", "Poor", "LC", "LMC","MC","UMC","UC","Rich")))
+
+set.seed(558)
+split=createDataPartition(y=df$Diabetes_binary, p=0.7, list=FALSE)
+train=df[split,]
+test=df[-split,]
+```
+
 # Logistic Regression Models
+
+Our first choice of model is a logistic regression. Such a regression may be useful in predicting binary events, since the response is bounded between 0 and 1. We will attempt to fit three different logistic regression models ranging from largely parsimonious to largely comprehensive. We can use the `leap` package to help with variable selection, using an exhaustive search on the full data set.
+
+```{r}
+suppressPackageStartupMessages(library(leaps))
+
+bestmod=regsubsets(Diabetes_binary~.,
+                   data=diabetes,
+                   nvmax=ncol(df)-1)
+```
+
+We elect to use adjusted $r^2$ to evaluate the models. See that this metric does not really improve as we add more variables; we can pick a smaller model without too much of a worry.
+
+```{r}
+summary(bestmod)$adjr2
+```
+
+For that reason, we choose to use models of size 3, 6, and 9. Our output below shows which variables we should include for each model. For instance, if we only had one variable, we should choose High blood pressure. Our smallest model will have predictors of general health, BMI, and high blood pressure. Our intermediate model will have the same three predictors, plus high cholesterol, heart attack, and age. Our largest model will have the same six as our intermediate model, plus alcohol consumption, difficulty walking, and income.
+
+```{r}
+summary(bestmod)
+```
+
+We use the `glmnet` package to train our three candidate models. In each case we use 5-fold cross-validation with log-loss as our metric of interest. This may be more appropriate than accuracy, since accuracy only gives is based on correct/incorrect classifications. Accuracy doesn't take into account how confident we may be in our predictions (e.g. it penalizes an incorrect prediction that we were not very confident in the same amount it penalizes an incorrect prediction that we were very confident in).
+
+```{r}
+suppressPackageStartupMessages(library(glmnet))
+
+log_reg_min=train(Diabetes_binary~ GenHlth+BMI+HighBP,
+                  data=train,
+                  method="glm",
+                  family="binomial",
+                  metric="logLoss",
+                  trControl=trainControl(
+                    method="cv",
+                    number=5,
+                    classProbs=TRUE,
+                    summaryFunction=mnLogLoss
+                  ))
+
+
+
+log_reg_med=train(Diabetes_binary~ GenHlth+BMI+HighBP+
+                    HighChol+HeartDiseaseorAttack+Age,
+                  data=train,
+                  method="glm",
+                  family="binomial",
+                  metric="logLoss",
+                  trControl=trainControl(
+                    method="cv",
+                    number=5,
+                    classProbs=TRUE,
+                    summaryFunction=mnLogLoss
+                  ))
+
+
+log_reg_max=train(Diabetes_binary~ GenHlth+BMI+HighBP+
+                    HighChol+HeartDiseaseorAttack+Age+
+                    HvyAlcoholConsump+DiffWalk+Income,
+                  data=train,
+                  method="glm",
+                  family="binomial",
+                  metric="logLoss",
+                  trControl=trainControl(
+                    method="cv",
+                    number=5,
+                    classProbs=TRUE,
+                    summaryFunction=mnLogLoss
+                  ))
+```
+
+Let's see how each of these models turned out. While we have elected to use log-loss as our metric of choice, out of curiosity, we also elect to show the accuracy.
+
+```{r}
+log_reg_min
+min_pred=predict(log_reg_min, newdata=test, type="prob")
+pred_data_min=data.frame(obs=test$Diabetes_binary, min_pred)
+log_loss_min=mnLogLoss(pred_data_min, lev=levels(test$Diabetes_binary))
+class_predictions_min=predict(log_reg_min, newdata=test, type="raw")
+conf_matrix_min=confusionMatrix(data=class_predictions_min, reference=test$Diabetes_binary)
+conf_matrix_min
+
+log_reg_med
+med_pred=predict(log_reg_med, newdata=test, type="prob")
+pred_data_med=data.frame(obs=test$Diabetes_binary, med_pred)
+log_loss_med=mnLogLoss(pred_data_med, lev=levels(test$Diabetes_binary))
+class_predictions_med=predict(log_reg_med, newdata=test, type="raw")
+conf_matrix_med=confusionMatrix(data=class_predictions_med, reference=test$Diabetes_binary)
+conf_matrix_med
+
+log_reg_max
+max_pred=predict(log_reg_max, newdata=test, type="prob")
+pred_data_max=data.frame(obs=test$Diabetes_binary, max_pred)
+log_loss_max=mnLogLoss(pred_data_max, lev=levels(test$Diabetes_binary))
+class_predictions_max=predict(log_reg_max, newdata=test, type="raw")
+conf_matrix_max=confusionMatrix(data=class_predictions_max, reference=test$Diabetes_binary)
+conf_matrix_max
+```
+
+Going by log-loss, our best model is the largest.
+
+```{r}
+data.frame(model=c("small", "med", "large"), logloss=c(log_loss_min, log_loss_med, log_loss_max))
+```
+
 
 # Classification Tree
 
