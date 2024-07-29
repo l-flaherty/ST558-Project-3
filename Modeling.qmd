@@ -44,7 +44,7 @@ test=df[-split,]
 
 Our first choice of model is a logistic regression. Such a regression may be useful in predicting binary events, since the response is bounded between 0 and 1. We will attempt to fit three different logistic regression models ranging from largely parsimonious to largely comprehensive. We can use the `leap` package to help with variable selection, using an exhaustive search on the full data set.
 
-```{r}
+```{r, warning=FALSE, message=FALSE}
 suppressPackageStartupMessages(library(leaps))
 
 bestmod=regsubsets(Diabetes_binary~.,
@@ -66,7 +66,7 @@ summary(bestmod)
 
 We use the `glmnet` package to train our three candidate models. In each case we use 5-fold cross-validation with log-loss as our metric of interest. This may be more appropriate than accuracy, since accuracy only gives is based on correct/incorrect classifications. Accuracy doesn't take into account how confident we may be in our predictions (e.g. it penalizes an incorrect prediction that we were not very confident in the same amount it penalizes an incorrect prediction that we were very confident in).
 
-```{r}
+```{r, warning=FALSE, message=FALSE}
 suppressPackageStartupMessages(library(glmnet))
 
 log_reg_min=train(Diabetes_binary~ GenHlth+BMI+HighBP,
@@ -185,26 +185,34 @@ log_loss_tree
 
 An improvement over a single tree because. While potentially offering improvements, such a model is not to be undertaken lightly-- the below takes over four hours to run!
 
-```{r}
+```{r, warning=FALSE, message=FALSE}
+library(ranger)
+
 rf_fit=train(Diabetes_binary~ GenHlth+BMI+HighBP+
                     HighChol+HeartDiseaseorAttack+Age+
                     HvyAlcoholConsump+DiffWalk+Income,
                   data=train,
-                  method="rf",
+                  method="ranger",
                   metric="logLoss",
                   trControl=trainControl(
                     method="cv",
-                    number=5,
+                    number=3,
                     classProbs=TRUE,
                     summaryFunction=mnLogLoss),
-               tuneGrid=data.frame(mtry=1:9))
+               tuneGrid=data.frame(mtry=1:9, splitrule="extratrees", min.node.size=10))
 
 rf_fit
 
 ```
 
+Since this took so long, we save the object.
 
-We see that the log-loss is actually higher in our random forest compared to a single tree. 
+```{r}
+save(rf_fit, file="rf_fit.R")
+load("rf_fit.R")
+```
+
+We see that the log-loss is slightly better in our random forest compared to a single tree. 
 
 ```{r}
 rf_pred=predict(rf_fit, newdata=test, type="prob")
@@ -218,4 +226,23 @@ log_loss_rf
 ```
 # Final Model Selection
 
-Given the computational demands of the random forest, along with its poor accuracy and log-loss metrics, we would prefer the singe classification tree. And while the classification tree did okay on our test data (log-loss of about 0.35), the logistic model did slightly better (log-loss of about 0.32). It is worth pointing out that if we cared more about predicting the presence of diabetes, we might prefer the classification tree. The classification tree has a true positive rate (sensitivity, though R outputs the metric as specificity) of about 20.6\%, while the logistic model had a sensitivity of about 14\%. 
+Given the three models above, we have a slight preference for the logistic model. The classification tree performed worst of all with a log-loss of about 0.35 on our test set. The logistic model did slightly worse than the random forest (log-loss of about 0.322 compared to 0.321), but at a significantly higher computational strain. It is worth pointing out that if we cared more about predicting the presence of diabetes, we might prefer the classification tree. The classification tree has a true positive rate (sensitivity, though R outputs the metric as specificity) of about 20.6\%, while the logistic model had a sensitivity of about 14\%. 
+
+```{r}
+conf_matrix_max$positive                  #important for sensitive/specific#
+
+conf_matrix_rf$byClass["Specificity"]     #recall this is really sensitivity#
+conf_matrix_tree$byClass["Specificity"]   #recall this is really sensitivity#
+conf_matrix_max$byClass["Specificity"]    #recall this is really sensitivity#
+
+prop.table(conf_matrix_rf$table, 2)
+prop.table(conf_matrix_tree$table, 2)
+prop.table(conf_matrix_max$table, 2)
+
+conf_matrix_rf$overall["Accuracy"]
+conf_matrix_tree$overall["Accuracy"]
+conf_matrix_max$overall["Accuracy"]
+
+
+
+```
