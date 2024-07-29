@@ -146,10 +146,9 @@ Going by log-loss, our best model is the largest.
 data.frame(model=c("small", "med", "large"), logloss=c(log_loss_min, log_loss_med, log_loss_max))
 ```
 
-
 # Classification Tree
 
-Classification trees are another way to make predictions. They are especially useful as they are easily interpretable. 
+Classification trees are another way to make predictions. They are especially useful as they are easily interpretable.
 
 ```{r}
 tree_fit=train(Diabetes_binary~ GenHlth+BMI+HighBP+
@@ -168,6 +167,7 @@ tree_fit=train(Diabetes_binary~ GenHlth+BMI+HighBP+
 tree_fit
 
 ```
+
 We see that the log-loss at most complexities are the same (i.e. adding complexity does not add branches to our tree). The best model is `cp=0`. Just like our logistic model, we apply this tree to our test data.
 
 ```{r}
@@ -188,18 +188,18 @@ An improvement over a single tree because. While potentially offering improvemen
 ```{r, warning=FALSE, message=FALSE}
 library(ranger)
 
-rf_fit=train(Diabetes_binary~ GenHlth+BMI+HighBP+
-                    HighChol+HeartDiseaseorAttack+Age+
-                    HvyAlcoholConsump+DiffWalk+Income,
-                  data=train,
-                  method="ranger",
-                  metric="logLoss",
-                  trControl=trainControl(
-                    method="cv",
-                    number=3,
-                    classProbs=TRUE,
-                    summaryFunction=mnLogLoss),
-               tuneGrid=data.frame(mtry=1:9, splitrule="extratrees", min.node.size=10))
+#rf_fit=train(Diabetes_binary~ GenHlth+BMI+HighBP+
+                    #HighChol+HeartDiseaseorAttack+Age+
+                    #HvyAlcoholConsump+DiffWalk+Income,
+                  #data=train,
+                  #method="ranger",
+                  #metric="logLoss",
+                  #trControl=trainControl(
+                   # method="cv",
+                    #number=3,
+                    #classProbs=TRUE,
+                    #summaryFunction=mnLogLoss),
+               #tuneGrid=data.frame(mtry=1:9, splitrule="extratrees", min.node.size=10))
 
 rf_fit
 
@@ -212,7 +212,7 @@ save(rf_fit, file="rf_fit.R")
 load("rf_fit.R")
 ```
 
-We see that the log-loss is slightly better in our random forest compared to a single tree. 
+We see that the log-loss is slightly better in our random forest compared to a single tree.
 
 ```{r}
 rf_pred=predict(rf_fit, newdata=test, type="prob")
@@ -224,9 +224,10 @@ conf_matrix_rf=confusionMatrix(data=class_predictions_rf, reference=test$Diabete
 conf_matrix_rf
 log_loss_rf
 ```
+
 # Final Model Selection
 
-Given the three models above, we have a slight preference for the logistic model. The classification tree performed worst of all with a log-loss of about 0.35 on our test set. The logistic model did slightly worse than the random forest (log-loss of about 0.322 compared to 0.321), but at a significantly higher computational strain. It is worth pointing out that if we cared more about predicting the presence of diabetes, we might prefer the classification tree. The classification tree has a true positive rate (sensitivity, though R outputs the metric as specificity) of about 20.6\%, while the logistic model had a sensitivity of about 14\%. 
+Given the three models above, we have a slight preference for the logistic model. The classification tree performed worst of all with a log-loss of about 0.35 on our test set. The logistic model did slightly worse than the random forest (log-loss of about 0.322 compared to 0.321), but at a significantly higher computational strain. It is worth pointing out that if we cared more about predicting the presence of diabetes, we might prefer the classification tree. The classification tree has a true positive rate (sensitivity, though R outputs the metric as specificity) of about 20.6%, while the logistic model had a sensitivity of about 14%.
 
 ```{r}
 conf_matrix_max$positive                  #important for sensitive/specific#

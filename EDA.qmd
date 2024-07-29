@@ -7,7 +7,7 @@ editor: visual
 
 ## Introduction
 
-We are given some data on diabetes from <https://www.kaggle.com/datasets/alexteboul/diabetes-health-indicators-dataset/>. Ultimately, we would like to create a model that uses the variables in our dataset to predict the presence of diabetes in a subject. Before we move to prediction, we'd like to perform a preliminary examination of the variables in our data-- that is the purpose of this file-- to get a sense of their distribution, to see if there are any missing data or outliers, to check if certain data seems to be implausible/clearly an input error, etc.  To do so, we download the file locally and load it as a tibble into our R session.
+We are given some data on diabetes from <https://www.kaggle.com/datasets/alexteboul/diabetes-health-indicators-dataset/>. Ultimately, we would like to create a model that uses the variables in our dataset to predict the presence of diabetes in a subject. Before we move to prediction, we'd like to perform a preliminary examination of the variables in our data-- that is the purpose of this file-- to get a sense of their distribution, to see if there are any missing data or outliers, to check if certain data seems to be implausible/clearly an input error, etc. To do so, we download the file locally and load it as a tibble into our R session.
 
 ```{r}
 suppressPackageStartupMessages(library(tidyverse))
@@ -18,7 +18,7 @@ diabetes
 
 ## Data
 
-We would like to get a preliminary look at the data, which we can do with normal summary functions. 
+We would like to get a preliminary look at the data, which we can do with normal summary functions.
 
 ```{r}
 str(diabetes, max.level=1, give.attr=FALSE)
@@ -30,7 +30,6 @@ We see that there is no missing data, that all of our data is numeric, and that 
 ## Summarizations
 
 With the data in hand, we'd now like to get some visual summaries. A natural interest is the distribution of our predictors. We have 22 in total, and most are binary. We can look at the bar charts for each of these below.
-
 
 ```{r}
 set.seed(558)                               #to make reproducible#
@@ -52,9 +51,10 @@ for (i in 1:countbinary) {
 
 rm(i, mycolors, countbinary)
 ```
-A point of interest is the relative large disparities between the levels in certain variables. Sex, smoking status, cholesterol levels, and blood pressure are all relatively balanced (e.g. there are similar levels of males and females in the data), but other variables, like strokes or heavy alcohol consumption, are lopsided. This is important for two reasons. One, the response variable we will be modeling is itself lopsided. We should have a classification rate better than the baseline prevalence (e.g. always guessing "no diabetes" will yield a correct classification rate over 85%) if if our model is to be useful. Further, we should have a relatively balanced miss-classification rate on both sides of our prediction (correctly classifying 100\% of "no diabetes", but only correctly classifying 50\% of "diabetes" is not really in the spirit of our predictions). This is the classic balance of Type I and II error rates. The other reason unbalanced variables are important is for the individual predictors. It is not hard to imagine scenarios where lopsided predictors have strong predictive ability, but only in one direction (e.g. if someone has a stroke, which is very rare in our dataset, that might be a terrific indicator that someone has diabetes, but if someone doesn't have a stroke, which is very common in our dataset, that might not give us much information for our prediction). In such a scenario, it may be worthwhile to keep the variable in our model.
 
-We can also examine the distribution of the remaining variables. We see that BMI, General Health, and Age are somewhat symmetric, while education and income have heavy left tails, and mental and physical health have heavy right tails. 
+A point of interest is the relative large disparities between the levels in certain variables. Sex, smoking status, cholesterol levels, and blood pressure are all relatively balanced (e.g. there are similar levels of males and females in the data), but other variables, like strokes or heavy alcohol consumption, are lopsided. This is important for two reasons. One, the response variable we will be modeling is itself lopsided. We should have a classification rate better than the baseline prevalence (e.g. always guessing "no diabetes" will yield a correct classification rate over 85%) if if our model is to be useful. Further, we should have a relatively balanced miss-classification rate on both sides of our prediction (correctly classifying 100% of "no diabetes", but only correctly classifying 50% of "diabetes" is not really in the spirit of our predictions). This is the classic balance of Type I and II error rates. The other reason unbalanced variables are important is for the individual predictors. It is not hard to imagine scenarios where lopsided predictors have strong predictive ability, but only in one direction (e.g. if someone has a stroke, which is very rare in our dataset, that might be a terrific indicator that someone has diabetes, but if someone doesn't have a stroke, which is very common in our dataset, that might not give us much information for our prediction). In such a scenario, it may be worthwhile to keep the variable in our model.
+
+We can also examine the distribution of the remaining variables. We see that BMI, General Health, and Age are somewhat symmetric, while education and income have heavy left tails, and mental and physical health have heavy right tails.
 
 ```{r}
 set.seed(558) 
@@ -87,8 +87,6 @@ corrplot(a, method="color",
            col=colorRampPalette(c("blue", "white", "red"))(50))
 rm(a)
 ```
-
-
 
 For future modeling, we may want to convert most of our categorical variables from numeric to factor. This is done below.
 
