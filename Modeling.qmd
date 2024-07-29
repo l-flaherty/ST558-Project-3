@@ -183,7 +183,7 @@ log_loss_tree
 
 # Random Forest
 
-An improvement over a single tree because.
+An improvement over a single tree because. While potentially offering improvements, such a model is not to be undertaken lightly-- the below takes over four hours to run!
 
 ```{r}
 rf_fit=train(Diabetes_binary~ GenHlth+BMI+HighBP+
@@ -204,7 +204,7 @@ rf_fit
 ```
 
 
-We see that the log-loss at most complexities are the same (i.e. adding complexity does not add branches to our tree). The best model is `cp=0`. Just like our logistic model, we apply this tree to our test data.
+We see that the log-loss is actually higher in our random forest compared to a single tree. 
 
 ```{r}
 rf_pred=predict(rf_fit, newdata=test, type="prob")
@@ -217,3 +217,5 @@ conf_matrix_rf
 log_loss_rf
 ```
 # Final Model Selection
+
+Given the computational demands of the random forest, along with its poor accuracy and log-loss metrics, we would prefer the singe classification tree. And while the classification tree did okay on our test data (log-loss of about 0.35), the logistic model did slightly better (log-loss of about 0.32). It is worth pointing out that if we cared more about predicting the presence of diabetes, we might prefer the classification tree. The classification tree has a true positive rate (sensitivity, though R outputs the metric as specificity) of about 20.6\%, while the logistic model had a sensitivity of about 14\%. 
