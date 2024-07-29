@@ -9,7 +9,7 @@ editor: visual
 
 We have been given data from <https://www.kaggle.com/datasets/alexteboul/diabetes-health-indicators-dataset/>. Our goal in this file is to create models that predict whether or not someone has diabetes based on a slew of potential predictors. We split the data into a training and test set below.
 
-```{r}
+```{r, warning=FALSE, message=FALSE}
 suppressPackageStartupMessages(library(tidyverse))
 suppressPackageStartupMessages(library(caret))
 
@@ -183,4 +183,37 @@ log_loss_tree
 
 # Random Forest
 
+An improvement over a single tree because.
+
+```{r}
+rf_fit=train(Diabetes_binary~ GenHlth+BMI+HighBP+
+                    HighChol+HeartDiseaseorAttack+Age+
+                    HvyAlcoholConsump+DiffWalk+Income,
+                  data=train,
+                  method="rf",
+                  metric="logLoss",
+                  trControl=trainControl(
+                    method="cv",
+                    number=5,
+                    classProbs=TRUE,
+                    summaryFunction=mnLogLoss),
+               tuneGrid=data.frame(mtry=1:9))
+
+rf_fit
+
+```
+
+
+We see that the log-loss at most complexities are the same (i.e. adding complexity does not add branches to our tree). The best model is `cp=0`. Just like our logistic model, we apply this tree to our test data.
+
+```{r}
+rf_pred=predict(rf_fit, newdata=test, type="prob")
+rf_data=data.frame(obs=test$Diabetes_binary, rf_pred)
+log_loss_rf=mnLogLoss(rf_data, lev=levels(test$Diabetes_binary))
+class_predictions_rf=predict(rf_fit, newdata=test, type="raw")
+conf_matrix_rf=confusionMatrix(data=class_predictions_rf, reference=test$Diabetes_binary)
+
+conf_matrix_rf
+log_loss_rf
+```
 # Final Model Selection
