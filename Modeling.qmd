@@ -149,6 +149,38 @@ data.frame(model=c("small", "med", "large"), logloss=c(log_loss_min, log_loss_me
 
 # Classification Tree
 
+Classification trees are another way to make predictions. They are especially useful as they are easily interpretable. 
+
+```{r}
+tree_fit=train(Diabetes_binary~ GenHlth+BMI+HighBP+
+                    HighChol+HeartDiseaseorAttack+Age+
+                    HvyAlcoholConsump+DiffWalk+Income,
+                  data=train,
+                  method="rpart",
+                  metric="logLoss",
+                  trControl=trainControl(
+                    method="cv",
+                    number=5,
+                    classProbs=TRUE,
+                    summaryFunction=mnLogLoss),
+               tuneGrid=data.frame(cp=seq(from=0, to=0.5, by=0.05)))
+
+tree_fit
+
+```
+We see that the log-loss at most complexities are the same (i.e. adding complexity does not add branches to our tree). The best model is `cp=0`. Just like our logistic model, we apply this tree to our test data.
+
+```{r}
+tree_pred=predict(tree_fit, newdata=test, type="prob")
+tree_data=data.frame(obs=test$Diabetes_binary, tree_pred)
+log_loss_tree=mnLogLoss(tree_data, lev=levels(test$Diabetes_binary))
+class_predictions_tree=predict(tree_fit, newdata=test, type="raw")
+conf_matrix_tree=confusionMatrix(data=class_predictions_tree, reference=test$Diabetes_binary)
+
+conf_matrix_tree
+log_loss_tree
+```
+
 # Random Forest
 
 # Final Model Selection
