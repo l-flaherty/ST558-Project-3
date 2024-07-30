@@ -1,12 +1,14 @@
 ##########Written By Liam Flaherty For ST558 Project 3##########
 #####1. Load Data And Required Packages#####
-library(plumbr)
+###1a. Load Packages###
+library(plumber)
 library(tidyverse)
 library(ranger)
 library(glmnet)
 library(leaps)
 library(caret)
 
+###1b. Load in Data###
 diabetes=read_csv("diabetes.csv", show_col_types = FALSE)
 df=diabetes |>        #Age is categorical too, but enough buckets to leave as numeric#
   mutate(Diabetes_binary=factor(Diabetes_binary, levels=c(0,1), labels=c("No_Diabetes", "Diabetes")),
@@ -28,43 +30,83 @@ df=diabetes |>        #Age is categorical too, but enough buckets to leave as nu
          Education=factor(Education, levels=1:6, labels=c("None", "Elem", "Some_HS", "HS", "Some_College", "College")),
          Income=factor(Income, levels=1:8, labels=c("None", "Poor", "LC", "LMC","MC","UMC","UC","Rich")))
 
-set.seed(558)
-split=createDataPartition(y=df$Diabetes_binary, p=0.7, list=FALSE)
-train=df[split,]
-test=df[-split,]
-
-log_reg_max=train(Diabetes_binary~ GenHlth+BMI+HighBP+
-                    HighChol+HeartDiseaseorAttack+Age+
-                    HvyAlcoholConsump+DiffWalk+Income,
-                  data=train,
-                  method="glm",
-                  family="binomial",
-                  metric="logLoss",
-                  trControl=trainControl(
-                    method="cv",
-                    number=5,
-                    classProbs=TRUE,
-                    summaryFunction=mnLogLoss
-                  ))
+load("log_reg_max.R")
+mymodel=coef(log_reg_max$finalModel)
 
 
 
-log_reg_max
-max_pred=predict(log_reg_max, newdata=test, type="prob")
-pred_data_max=data.frame(obs=test$Diabetes_binary, max_pred)
-log_loss_max=mnLogLoss(pred_data_max, lev=levels(test$Diabetes_binary))
-class_predictions_max=predict(log_reg_max, newdata=test, type="raw")
-conf_matrix_max=confusionMatrix(data=class_predictions_max, reference=test$Diabetes_binary)
-conf_matrix_max
+###1c. Get default values###
+mcf=function(data, col) {
+  data |>
+    count(across(all_of(col)), sort=TRUE) |>
+    slice(1) |>
+    pull(1)
+}
+
+dGenHlth=mcf(df, "GenHlth")
+dBMI=mcf(df, "BMI")
+dHighBP=mcf(df, "HighBP")
+dHighChol=mcf(df, "HighChol")
+dHeartDiseaseorAttack=mcf(df, "HeartDiseaseorAttack")
+dAge=mcf(df, "Age")
+dHvyAlcoholConsump=mcf(df, "HvyAlcoholConsump")
+dDiffWalk=mcf(df, "DiffWalk")
+dIncome=mcf(df, "Income")
 
 
 
 
-#####2. Endpoints#####
-###2a. Pred ###
+
+#####2. Prediction Endpoints#####
 #This endpoint should take in any predictors used in your ‘best’ model.#
 #You should have default values for each that is the mean of that variable’s values.#
 #Below this API put three example function calls to the API that I can easily copy and paste to check that it works.#
+
+#* @apiTitle Predicting diabetes
+#* @apiDescription Using small logistic model to predict the probability of diabetes
+#* @param GenHlth General Health (1-5)
+#* @param BMI Body Mass Index (numeric)
+#* @param HighBP High Blood Pressure (binary)
+#* @param HighChol High Cholesterol (binary)
+#* @param HeartDiseaseorAttack History of Heart Disease or Attack (binary)
+#* @param Age Age (1 through 9 categorical)
+#* @param HvyAlcoholConsump Heavy Alcohol Consumption (binary)
+#* @param DiffWalk Difficulty Walking (binary)
+#* @param Income Income Category (1-8 categorical)
+#* @get /predict
+
+function(GenHlth=dGenHlth,  
+         BMI=dBMI,     
+         HighBP=dHighBP,
+         HighChol=dHighChol, 
+         HeartDiseaseorAttack=dHeartDiseaseorAttack , 
+         Age=dAge,     
+         HvyAlcoholConsump=dHvyAlcoholConsump, 
+         DiffWalk=dDiffWalk, 
+         Income=dIncome) {
+  
+  #Change Factor To Numeric#
+  new_data=data.frame(
+    GenHlth=as.numeric(GenHlth),
+    BMI=as.numeric(BMI),
+    HighBP=as.numeric(HighBP),
+    HighChol=as.numeric(HighChol),
+    HeartDiseaseorAttack=as.numeric(HeartDiseaseorAttack),
+    Age=as.numeric(Age),
+    HvyAlcoholConsump=as.numeric(HvyAlcoholConsump),
+    DiffWalk=as.numeric(DiffWalk),
+    Income=as.numeric(Income)
+  )
+  
+  #Make The Prediction#
+  pred_prob=predict(log_reg_max, newdata=new_data, type="prob")
+  
+  #Output Results#
+  return(list(
+    diabetes_probability=pred_prob[1, "1"],
+    input_data=new_data
+  ))
+}
 
 
 ###2b. info###
